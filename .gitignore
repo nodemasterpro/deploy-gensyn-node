@@ -1,0 +1,29 @@
+# Environment variables
+*.env
+.env
+.vastai_env
+
+# Logs
+*.log
+gensyn_monitor_logs/
+logs/
+
+# Backups
+*.tar.gz
+backups/
+pod_info.json
+
+# Runtime files
+node_modules/
+__pycache__/
+.venv/
+
+# Credentials
+swarm.pem
+*.key
+*.pem
+
+# Temporary files
+*.tmp
+.DS_Store
+Thumbs.db
