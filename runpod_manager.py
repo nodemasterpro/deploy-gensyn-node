@@ -147,27 +147,27 @@ class RunPodManager:
         original_gpu = config['gpu']
         
         # First try with RTX 4090
-        print(f"Essai de création d'un pod avec {config['gpu']}...")
+        print(f"Attempting to create a pod with {config['gpu']}...")
         pod_id = self.create_pod_cli(config)
         
         # If RTX 4090 failed, try with RTX 3090
         if not pod_id and original_gpu == "NVIDIA GeForce RTX 4090":
-            print("RTX 4090 non disponible. Essai avec RTX 3090...")
+            print("RTX 4090 not available. Trying with RTX 3090...")
             config['gpu'] = "NVIDIA GeForce RTX 3090"
             pod_id = self.create_pod_cli(config)
             
             # If RTX 3090 also failed, try with RTX 4080 SUPER
             if not pod_id:
-                print("RTX 3090 non disponible. Essai avec RTX 4080 SUPER...")
+                print("RTX 3090 not available. Trying with RTX 4080 SUPER...")
                 config['gpu'] = "NVIDIA GeForce RTX 4080 SUPER"
                 pod_id = self.create_pod_cli(config)
                 
                 if pod_id:
-                    print(f"Pod créé avec succès avec RTX 4080 SUPER! ID: {pod_id}")
+                    print(f"Pod successfully created with RTX 4080 SUPER! ID: {pod_id}")
             elif pod_id:
-                print(f"Pod créé avec succès avec RTX 3090! ID: {pod_id}")
+                print(f"Pod successfully created with RTX 3090! ID: {pod_id}")
         elif pod_id:
-            print(f"Pod créé avec succès avec {config['gpu']}! ID: {pod_id}")
+            print(f"Pod successfully created with {config['gpu']}! ID: {pod_id}")
         
         return pod_id
 
@@ -323,14 +323,14 @@ class RunPodManager:
                 
             print("Pod is ready. Getting SSH information...")
             
-            # Utiliser la nouvelle méthode améliorée pour obtenir les informations SSH
+            # Use the improved method to get SSH information
             ssh_info = self.get_updated_ssh_info(pod_id, max_attempts=20, delay=30)
             
-            # Si nous n'avons pas pu obtenir les informations SSH, nous ne pouvons pas continuer
+            # If we couldn't get the SSH information, we can't continue
             if not ssh_info:
-                print("❌ Impossible d'obtenir les informations SSH nécessaires.")
-                print("Veuillez exécuter manuellement la commande 'python3 runpod_manager.py connect' pour mettre à jour les informations de connexion,")
-                print("puis exécutez 'python3 runpod_manager.py restore' pour restaurer les fichiers.")
+                print("❌ Unable to obtain the necessary SSH information.")
+                print("Please manually run the command 'python3 runpod_manager.py connect' to update connection information,")
+                print("then run 'python3 runpod_manager.py restore' to restore the files.")
                 return False
                 
             # Add SSH information to pod_data for restore_gensyn
@@ -653,19 +653,19 @@ class RunPodManager:
             print(f"Creating backup directory: {GENSYN_BACKUP_DIR}")
             os.makedirs(GENSYN_BACKUP_DIR, exist_ok=True)
         
-        # Obtenir les informations SSH à jour
-        print("Tentative d'obtention des informations SSH les plus récentes...")
+        # Get updated SSH information
+        print("Attempting to obtain the latest SSH information...")
         ssh_info = self.get_updated_ssh_info(pod_id, max_attempts=10, delay=15)
         if ssh_info:
-            # Utiliser les informations SSH obtenues
+            # Use the obtained SSH information
             ssh_port = ssh_info.get("ssh_port")
             ssh_host = ssh_info.get("ssh_host")
             ssh_key_path = ssh_info.get("ssh_key_path")
-            print(f"✅ Informations SSH mises à jour: {ssh_host}:{ssh_port}")
+            print(f"✅ SSH information updated: {ssh_host}:{ssh_port}")
         else:
-            # Si get_updated_ssh_info échoue, essayer avec les valeurs dans pod_data ou .env
-            print("❌ Impossible d'obtenir les informations SSH mises à jour.")
-            print("Tentative d'utilisation des informations disponibles...")
+            # If get_updated_ssh_info fails, essayer avec les valeurs dans pod_data ou .env
+            print("❌ Unable to obtain updated SSH information.")
+            print("Attempting to use available information...")
             
             # Get SSH connection info from pod_data or environment
             ssh_port = pod_data.get("ssh_port")
@@ -794,25 +794,25 @@ class RunPodManager:
             
             print(f"Pod {pod_id} is now running.")
         
-        # Obtenir les informations SSH à jour
-        print("Tentative d'obtention des informations SSH les plus récentes...")
+        # Get updated SSH information
+        print("Attempting to obtain the latest SSH information...")
         ssh_info = self.get_updated_ssh_info(pod_id, max_attempts=10, delay=15)
         if ssh_info:
-            # Utiliser les informations SSH obtenues
+            # Use the obtained SSH information
             ssh_port = ssh_info.get("ssh_port")
             ssh_host = ssh_info.get("ssh_host")
             ssh_key_path = ssh_info.get("ssh_key_path")
-            print(f"✅ Informations SSH mises à jour: {ssh_host}:{ssh_port}")
+            print(f"✅ SSH information updated: {ssh_host}:{ssh_port}")
         else:
-            # Si get_updated_ssh_info échoue, essayer avec les valeurs dans pod_data ou .env
-            print("❌ Impossible d'obtenir les informations SSH mises à jour.")
-            print("Tentative d'utilisation des informations disponibles...")
+            # If get_updated_ssh_info fails, essayer avec les valeurs dans pod_data ou .env
+            print("❌ Unable to obtain updated SSH information.")
+            print("Attempting to use available information...")
             
             # Check if pod_data contains SSH connection details
             if isinstance(pod_data, dict) and "ssh_port" in pod_data:
                 ssh_port = pod_data.get("ssh_port")
                 ssh_host = pod_data.get("ssh_host")
-                print(f"Utilisation des informations SSH de pod_data: {ssh_host}:{ssh_port}")
+                print(f"Using SSH information from pod_data: {ssh_host}:{ssh_port}")
             
             # If not provided in pod_data, get from environment variables
             if not ssh_port or not ssh_host:
@@ -820,7 +820,7 @@ class RunPodManager:
                 dotenv.load_dotenv(override=True)
                 ssh_port = os.getenv("SSH_PORT")
                 ssh_host = os.getenv("SSH_HOST")
-                print(f"Utilisation des informations SSH depuis l'environnement: {ssh_host}:{ssh_port}")
+                print(f"Using SSH information from environment: {ssh_host}:{ssh_port}")
             
             # Ensure we have the necessary SSH information
             if not ssh_port or not ssh_host:
@@ -905,7 +905,7 @@ class RunPodManager:
             subprocess.run(cmd, shell=True, check=True)
             print("✅ userData.json restored")
             
-            # Vérifier que la connexion SSH est toujours active avant de continuer
+            # Check that the SSH connection is still active avant de continuer
             print("Checking SSH connection before continuing...")
             try:
                 check_cmd = f"ssh -p {ssh_port} -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i {ssh_key_path} root@{ssh_host} 'echo CONNECTION_OK'"
@@ -939,19 +939,19 @@ class RunPodManager:
             
             print("✅ Stable SSH connection established, continuing with service restart...")
             
-            # Utiliser le script de redémarrage au lieu d'exécuter les commandes directement
+            # Use the restart script instead of executing commands directly
             try:
-                # Copier le script de redémarrage sur le serveur distant
+                # Copy the restart script to the remote server
                 script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "restart_gensyn.sh")
                 if not os.path.exists(script_path):
-                    print("❌ Script de redémarrage non trouvé. Création du script...")
+                    print("❌ Restart script not found. Creating script...")
                     with open(script_path, "w") as f:
                         f.write("""#!/bin/bash
 
-# Script de redémarrage des services Gensyn
+# Script to restart Gensyn services
 echo "==== Restarting Gensyn Services ===="
 
-# Redémarrer le conteneur Docker s'il existe
+# Restart Docker container if it exists
 if command -v docker &> /dev/null; then
   echo "Docker found, restarting container..."
   docker restart gensyn-node || echo "Gensyn-node container not found"
@@ -959,18 +959,18 @@ else
   echo "Docker not installed, skipping container restart"
 fi
 
-# Arrêter les processus existants
+# Stop existing processes
 echo "Stopping hivemind processes..."
 pkill -f hivemind || echo "No hivemind process found"
 
 echo "Stopping swarm processes..."
 pkill -f swarm || echo "No swarm process found"
 
-# Nettoyer le répertoire de mémoire partagée
+# Clean shared memory directory
 echo "Cleaning shared memory directory..."
 rm -rf /dev/shm/* || echo "Could not clean /dev/shm/"
 
-# Démarrer le service Gensyn si le script existe
+# Start Gensyn service if the script exists
 if [ -f /root/rl-swarm/run_swarm.sh ]; then
   echo "Starting Gensyn service..."
   cd /root/rl-swarm && bash run_swarm.sh &
@@ -980,23 +980,23 @@ else
 fi
 
 echo "==== Gensyn Services Restart Complete ====" """)
-                    # Rendre le script exécutable
+                    # Make the script executable
                     os.chmod(script_path, 0o755)
-                    print("✅ Script de redémarrage créé avec succès")
+                    print("✅ Restart script created successfully")
                 
-                # Copier le script sur le serveur distant
+                # Copy the script to the remote server
                 print("Copying restart script to remote server...")
                 copy_cmd = f"scp -P {ssh_port} -i {ssh_key_path} {script_path} root@{ssh_host}:/tmp/restart_gensyn.sh"
                 print(f"Executing command: {copy_cmd}")
                 subprocess.run(copy_cmd, shell=True, check=True)
                 print("✅ Restart script copied successfully")
                 
-                # Rendre le script exécutable sur le serveur distant
+                # Make the script executable on the remote server
                 chmod_cmd = f"ssh -p {ssh_port} -i {ssh_key_path} root@{ssh_host} 'chmod +x /tmp/restart_gensyn.sh'"
                 print(f"Making script executable: {chmod_cmd}")
                 subprocess.run(chmod_cmd, shell=True, check=True)
                 
-                # Exécuter le script
+                # Execute the script
                 run_cmd = f"ssh -p {ssh_port} -i {ssh_key_path} root@{ssh_host} '/tmp/restart_gensyn.sh'"
                 print(f"Executing restart script: {run_cmd}")
                 subprocess.run(run_cmd, shell=True, check=True)
@@ -1499,72 +1499,72 @@ echo "==== Gensyn Services Restart Complete ====" """)
             return False
             
     def query_runpod_ssh_port(self, pod_id):
-        """Interroge directement l'API RunPod pour obtenir le port SSH après un redémarrage"""
-        print(f"Recherche du nouveau port SSH pour le pod {pod_id}...")
+        """Directly queries the RunPod API to get the SSH port after a restart"""
+        print(f"Searching for new SSH port for pod {pod_id}...")
         try:
-            # Essayer d'obtenir les informations via l'API RunPod
+            # Try to get information via RunPod API
             cmd = ["runpodctl", "get", "pod", pod_id, "-a"]
-            print(f"Exécution de la commande: {' '.join(cmd)}")
+            print(f"Executing command: {' '.join(cmd)}")
             
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
                 output = result.stdout
                 
-                # Rechercher les lignes contenant des connexions TCP
+                # Look for lines containing TCP connections
                 tcp_pattern = re.search(r'(\d+\.\d+\.\d+\.\d+):(\d+)->22\s*(?:\(pub,\s*tcp\)|.*tcp)', output)
                 if tcp_pattern:
                     host = tcp_pattern.group(1)
                     port = tcp_pattern.group(2)
-                    print(f"Port SSH détecté via TCP: {host}:{port}")
+                    print(f"SSH port detected via TCP: {host}:{port}")
                     return {
                         "host": host,
                         "port": port,
                         "username": "root"
                     }
                     
-                # Rechercher d'autres formats de connexion SSH
+                # Look for other SSH connection formats
                 if "SSH" in output:
                     ssh_pattern = re.search(r'ssh\s+([^@]+)@([^\s]+)', output)
                     if ssh_pattern:
                         username = ssh_pattern.group(1)
                         host = ssh_pattern.group(2)
-                        print(f"Information SSH détectée: {username}@{host}")
+                        print(f"SSH information detected: {username}@{host}")
                         return {
                             "username": username, 
                             "host": host, 
                             "port": "22"
                         }
             
-            print("Aucune information SSH trouvée dans la sortie de runpodctl")
+            print("No SSH information found in runpodctl output")
             return None
             
         except Exception as e:
-            print(f"Erreur lors de la recherche du port SSH: {e}")
+            print(f"Error while searching for SSH port: {e}")
             return None
 
     def get_updated_ssh_info(self, pod_id, max_attempts=20, delay=30):
-        """Essaie plusieurs méthodes pour obtenir les informations SSH à jour"""
-        print(f"Recherche des informations SSH à jour pour le pod {pod_id}...")
+        """Tries multiple methods to obtain updated SSH information"""
+        print(f"Looking for updated SSH information for pod {pod_id}...")
         
         for attempt in range(1, max_attempts+1):
-            print(f"Tentative {attempt}/{max_attempts} pour obtenir les informations SSH...")
+            print(f"Attempt {attempt}/{max_attempts} to obtain SSH information...")
             
-            # Méthode 1: Utiliser query_runpod_ssh_port
+            # Method 1: Use query_runpod_ssh_port
             ssh_info = self.query_runpod_ssh_port(pod_id)
             if ssh_info and ssh_info.get("host") and ssh_info.get("port"):
-                print(f"✅ Informations SSH obtenues: {ssh_info.get('username', 'root')}@{ssh_info['host']}:{ssh_info['port']}")
+                print(f"✅ SSH information obtained: {ssh_info.get('username', 'root')}@{ssh_info['host']}:{ssh_info['port']}")
                 
-                # Vérifier si la connexion fonctionne
+                # Check if the connection works
                 try:
                     ssh_key_path = get_ssh_key_path()
                     check_cmd = f"ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i {ssh_key_path} {ssh_info.get('username', 'root')}@{ssh_info['host']} -p {ssh_info['port']} 'echo SSH_OK'"
-                    print(f"Test de la connexion: {check_cmd}")
+                    print(f"Testing connection: {check_cmd}")
                     
                     check_result = subprocess.run(check_cmd, shell=True, capture_output=True, text=True, timeout=10)
                     if "SSH_OK" in check_result.stdout:
-                        print("✅ Connexion SSH établie avec succès!")
+                        print("✅ SSH connection successfully established!")
                         
-                        # Mettre à jour les informations dans .env
+                        # Update information in .env
                         save_pod_id_env(
                             pod_id, 
                             username=ssh_info.get('username', 'root'),
@@ -1579,13 +1579,13 @@ echo "==== Gensyn Services Restart Complete ====" """)
                             "ssh_key_path": ssh_key_path
                         }
                 except Exception as e:
-                    print(f"Erreur lors du test de la connexion: {e}")
+                    print(f"Error during connection test: {e}")
             
-            # Si nous sommes arrivés ici, aucune méthode n'a fonctionné
-            print(f"Attente de {delay} secondes avant la prochaine tentative...")
+            # If we got here, no method worked
+            print(f"Waiting {delay} seconds before next attempt...")
             time.sleep(delay)
             
-        print("❌ Impossible d'obtenir des informations SSH à jour après plusieurs tentatives.")
+        print("❌ Unable to obtain updated SSH information after multiple attempts.")
         return None
 
     def get_pod_ssh_info_from_example(self, pod_id, example=None):
@@ -1932,7 +1932,7 @@ echo "==== Gensyn Services Restart Complete ====" """)
 
 def load_pod_id():
     """Load pod ID from .env file or try to find it from running pods if not found in .env"""
-    # D'abord, essayer de charger l'ID du pod depuis le fichier .env
+    # First, try to load pod ID from .env file
     env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     if os.path.exists(env_file):
         with open(env_file, "r") as f:
@@ -1940,10 +1940,10 @@ def load_pod_id():
                 line = line.strip()
                 if line and line.startswith("POD_ID="):
                     pod_id = line.split("=", 1)[1].strip()
-                    if pod_id:  # Si l'ID n'est pas vide
+                    if pod_id:  # If the ID is not empty
                         return pod_id
     
-    # Si aucun ID n'est trouvé, essayer de lire depuis pod_info.json
+    # If no ID is found, try to read from pod_info.json
     pod_info_path = os.path.join(GENSYN_BACKUP_DIR, "pod_info.json")
     if os.path.exists(pod_info_path):
         try:
@@ -1954,9 +1954,9 @@ def load_pod_id():
         except:
             pass
     
-    # Si toujours pas d'ID, essayer de le récupérer depuis les pods en cours d'exécution
+    # If still no ID, try to retrieve it from running pods
     try:
-        # Exécuter runpodctl get pod
+        # Execute runpodctl get pod
         result = subprocess.run(
             ["runpodctl", "get", "pod"], 
             capture_output=True, 
@@ -1964,21 +1964,21 @@ def load_pod_id():
         )
         
         if result.returncode == 0 and result.stdout.strip():
-            # Analyser la sortie pour extraire l'ID du premier pod
+            # Analyze output to extract the ID of the first pod
             lines = result.stdout.strip().split('\n')
-            if len(lines) >= 2:  # Au moins une ligne d'en-tête + une ligne de pod
+            if len(lines) >= 2:  # At least one header line + one pod line
                 pod_line = lines[1].strip()
                 parts = pod_line.split()
                 if len(parts) >= 1:
                     pod_id = parts[0]
-                    # Vérifier si c'est un ID valide (au moins 12 caractères)
+                    # Check if it's a valid ID (at least 12 characters)
                     if len(pod_id) >= 12:
-                        print(f"Pod trouvé avec ID: {pod_id}")
-                        # Sauvegarder l'ID dans .env pour une utilisation future
+                        print(f"Pod found with ID: {pod_id}")
+                        # Save the ID in .env for future use
                         save_pod_id_env(pod_id)
                         return pod_id
     except Exception as e:
-        print(f"Erreur lors de la recherche du pod actif: {e}")
+        print(f"Error searching for active pod: {e}")
     
     return None
 
@@ -2079,7 +2079,7 @@ def clean_pod_info():
 
 def get_ssh_key_path():
     """Get the SSH key path from environment or use default"""
-    # Charger les variables d'environnement depuis le fichier .env
+    # Load environment variables from .env file
     env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     if os.path.exists(env_file):
         with open(env_file, "r") as f:
@@ -2090,12 +2090,12 @@ def get_ssh_key_path():
                     if env_key_path:
                         return os.path.expanduser(env_key_path)
     
-    # Vérifier la variable d'environnement
+    # Check environment variable
     env_key_path = os.getenv("SSH_KEY_PATH")
     if env_key_path:
         return os.path.expanduser(env_key_path)
     
-    # Chemin par défaut
+    # Default path
     return os.path.expanduser("~/.ssh/id_rsa")
 
 def main():
@@ -2124,11 +2124,11 @@ def main():
     # List pods command
     list_parser = subparsers.add_parser('list', help='List pods')
     
-    # Add backup command (déprécié mais gardé pour compatibilité)
+    # Add backup command (deprecated but kept for compatibility)
     backup_parser = subparsers.add_parser('backup', help='Backup critical Gensyn files')
     backup_parser.add_argument('--force', action='store_true', help='Force backup even without direct TCP connection')
     
-    # Renommer deploy en restore (déprécié mais gardé pour compatibilité)
+    # Rename deploy to restore (deprecated but kept for compatibility)
     restore_parser = subparsers.add_parser('restore', help='Restore critical Gensyn files')
     restore_parser.add_argument('--force', action='store_true', help='Force restore even without direct TCP connection')
     
@@ -2142,7 +2142,7 @@ def main():
     subparsers.add_parser('clean', help='Clean pod information from configuration files')
     
     # IMPORTANT: For backward compatibility, keep 'deploy' for now
-    deploy_parser = subparsers.add_parser('deploy', help='[DÉPRÉCIÉ] Voir README pour la restauration manuelle')
+    deploy_parser = subparsers.add_parser('deploy', help='[DEPRECATED] See README for manual restoration')
     
     # Parse arguments
     args = parser.parse_args()
@@ -2182,7 +2182,7 @@ def main():
             if pod_data:
                 print(f"Pod {pod_id} is ready and running!")
                 print(f"To connect via SSH, use: python3 runpod_manager.py connect")
-                print(f"Pour sauvegarder les fichiers critiques, consultez le README.md")
+                print(f"To backup critical files, please check the README.md")
             else:
                 print("Pod didn't reach 'ready' state.")
         else:
@@ -2200,8 +2200,8 @@ def main():
                 print(f"Pod {pod_id} is already running.")
             else:
                 print(f"Pod {pod_id} is currently {status}. Starting it...")
-                print("⚠️ IMPORTANT: Le port SSH va probablement changer après le redémarrage.")
-                print("Le script va automatiquement détecter le nouveau port et mettre à jour la configuration.")
+                print("⚠️ IMPORTANT: The SSH port will likely change after restart.")
+                print("The script will automatically detect the new port and update the configuration.")
                 
                 if manager.start_pod_cli(pod_id):
                     print(f"✅ Pod {pod_id} started successfully")
