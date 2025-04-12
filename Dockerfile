@@ -26,6 +26,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     ca-certificates \
     gnupg \
+    openssh-server \
+    && mkdir -p /run/sshd /var/run/sshd \
+    && echo "PermitRootLogin yes" >> /etc/ssh/sshd_config \
+    && echo "AuthorizedKeysFile %h/.ssh/authorized_keys" >> /etc/ssh/sshd_config \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 18.x
@@ -201,13 +205,6 @@ exec /root/start.sh' > /root/gpu_detect.sh && \
 COPY start.sh /root/start.sh
 COPY gpu_detect.sh /root/gpu_detect.sh
 RUN chmod +x /root/start.sh /root/gpu_detect.sh
-
-# Install SSH server during build to ensure it's available
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server && \
-    mkdir -p /run/sshd /var/run/sshd && \
-    echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
-    echo "AuthorizedKeysFile %h/.ssh/authorized_keys" >> /etc/ssh/sshd_config
 
 # Expose port 3000 for web interface
 EXPOSE 3000
