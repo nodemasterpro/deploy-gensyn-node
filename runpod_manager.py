@@ -1024,6 +1024,27 @@ echo "==== Gensyn Services Restart Complete ====" """)
         if config is None:
             config = DEFAULT_POD_CONFIG
             
+        # Get the SSH public key to pass to the pod
+        ssh_key_path = get_ssh_key_path()
+        public_key_path = f"{ssh_key_path}.pub"
+        public_key = ""
+        
+        if os.path.exists(public_key_path):
+            try:
+                with open(public_key_path, "r") as f:
+                    public_key = f.read().strip()
+                print(f"Using SSH public key: {public_key[:40]}...")
+            except Exception as e:
+                print(f"Error reading SSH public key: {e}")
+        else:
+            print(f"⚠️ SSH public key file not found at {public_key_path}")
+            print("Creating SSH key pair...")
+            ensure_ssh_key_exists()
+            # Try reading again after creation
+            if os.path.exists(public_key_path):
+                with open(public_key_path, "r") as f:
+                    public_key = f.read().strip()
+        
         # Build the CLI command with correct syntax
         cmd = ["runpodctl", "create", "pod", 
                "--name", config['name'],
@@ -1045,6 +1066,10 @@ echo "==== Gensyn Services Restart Complete ====" """)
         if config.get('containerDiskInGb'):
             cmd.extend(["--containerDiskSize", str(config['containerDiskInGb'])])
             
+        # Add environment variables
+        if public_key:
+            cmd.extend(["--env", f"PUBLIC_KEY={public_key}"])
+        
         print(f"Executing command: {' '.join(cmd)}")
         
         try:
