@@ -1306,9 +1306,28 @@ echo "==== Gensyn Services Restart Complete ====" """)
                     "key_path": ssh_key_path
                 }
             
-            # 4. Return information from .env with warning
-            print("⚠️ SSH format not detected. Using values from .env.")
+            # 4. Legacy RunPod format with ID-suffix
+            ssh_legacy_match = re.search(rf'{pod_id}-([a-f0-9]+)@ssh\.runpod\.io', output)
+            if ssh_legacy_match:
+                hex_suffix = ssh_legacy_match.group(1)
+                username = f"{pod_id}-{hex_suffix}"
+                host = "ssh.runpod.io"
+                port = 22
+                print(f"Legacy SSH format found: {username}@{host}")
+                
+                # Save these details to .env
+                save_pod_id_env(pod_id, username, host, port)
+                
+                return {
+                    "username": username,
+                    "host": host,
+                    "port": port,
+                    "key_path": ssh_key_path
+                }
+            
+            # 5. Return information from .env with warning
             if SSH_USERNAME and SSH_HOST:
+                print(f"⚠️ SSH format not detected in CLI output. Using values from .env.")
                 return {
                     "username": SSH_USERNAME,
                     "host": SSH_HOST,
@@ -1316,22 +1335,17 @@ echo "==== Gensyn Services Restart Complete ====" """)
                     "key_path": ssh_key_path
                 }
             
-            # 5. Last resort: generic format
-            print("⚠️ IMPORTANT: SSH format not detected and values not found in .env.")
-            print("⚠️ Please check the information on the RunPod console and update .env manually.")
-            return {
-                "username": f"{pod_id}-xxxxx", 
-                "host": "ssh.runpod.io",
-                "port": 22,
-                "key_path": ssh_key_path
-            }
+            # If we got here, we couldn't find SSH info in standard formats
+            print("⚠️ No SSH information found in standard formats. Please check RunPod console.")
+            return None
             
         except Exception as e:
             print(f"Error retrieving SSH information: {e}")
             traceback.print_exc()
             
-            # In case of error, use values from .env if available
-            if SSH_USERNAME and SSH_HOST:
+            # In case of an error, try to get the info from environment variables
+            if SSH_USERNAME and SSH_HOST and SSH_PORT:
+                print(f"Using SSH information from .env as fallback: {SSH_USERNAME}@{SSH_HOST}:{SSH_PORT}")
                 return {
                     "username": SSH_USERNAME,
                     "host": SSH_HOST,
@@ -1689,21 +1703,21 @@ echo "==== Gensyn Services Restart Complete ====" """)
             
             if not pod_id:
                 print("❌ No pod ID found. Please create a pod first.")
-                return False
+                return None
                 
             # Get pod info from RunPod
             status, pod_data = self.get_pod_status(pod_id)
             
             if not pod_data:
                 print(f"❌ Unable to retrieve info for pod {pod_id}")
-                return False
+                return None
                 
             if status != "RUNNING":
                 print(f"⚠️ Pod {pod_id} is not running (status: {status}).")
                 print("⚠️ SSH connection may not be available.")
                 if not force:
                     print("Use --force to attempt connection anyway.")
-                    return False
+                    return None
                     
             pod_data["id"] = pod_id
                     
@@ -1731,158 +1745,44 @@ echo "==== Gensyn Services Restart Complete ====" """)
                     print("\n✅ You can also use SCP for file transfers:\n")
                     scp_cmd = f"scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P {ssh_port} -i {ssh_key_path} [local_file] {ssh_user}@{ssh_host}:[remote_path]"
                     print(f"    {scp_cmd}")
+                    
+                    # Try to get HTTP URL for port 3000 (common for web interfaces)
+                    try:
+                        # Run command to get detailed pod info
+                        result = subprocess.run(
+                            ["runpodctl", "get", "pod", pod_data["id"], "-a"], 
+                            capture_output=True, 
+                            text=True, 
+                            check=True
+                        )
+                        output = result.stdout
+                        
+                        # Look for HTTP port mappings (usually 3000 for web interfaces)
+                        http_match = re.search(r'(\d+\.\d+\.\d+\.\d+):(\d+)->3000\s*(?:\(prv,\s*http\)|.*http)', output)
+                        if http_match:
+                            http_host = http_match.group(1)
+                            http_port = http_match.group(2)
+                            http_url = f"http://{http_host}:{http_port}"
+                            print(f"\n🌐 Web interface available at:\n")
+                            print(f"    {http_url}")
+                        
+                        # Also check for public URLs in the tunnel format
+                        pod_id = pod_data["id"]
+                        public_url = f"https://{pod_id}-3000.proxy.runpod.io"
+                        print(f"\n🌐 Alternative web access may be available at:\n")
+                        print(f"    {public_url}")
+                        
+                    except Exception as e:
+                        # Non-critical error, just log it
+                        print(f"\n⚠️ Could not retrieve web interface URL: {e}")
                 
+                # Return the SSH info for later use
                 return ssh_info
             else:
                 print("❌ Incomplete SSH information received.")
-                return False
+                return None
         else:
             print("❌ Failed to retrieve SSH information.")
-            return False
-
-    def run_pod_connect(self, pod_id):
-        """Get the correct SSH connection information using runpodctl connect command
-        
-        This function runs 'runpodctl connect POD_ID' to get the exact SSH command
-        with the correct port that may have changed after restart.
-        """
-        print(f"Running 'runpodctl connect {pod_id}' to get updated SSH information...")
-        try:
-            # First, check if runpodctl connect is available
-            result = subprocess.run(
-                ["runpodctl", "connect", pod_id], 
-                capture_output=True, 
-                text=True
-            )
-            
-            output = result.stdout.strip()
-            
-            # Look for the SSH command in the output
-            ssh_cmd_match = re.search(r'🔑\s+Command to connect to the pod:\s+ssh\s+([^@\s]+)@([^\s]+)\s+-p\s+(\d+)(?:\s+-i\s+([^\s]+))?', output, re.MULTILINE)
-            
-            if ssh_cmd_match:
-                username = ssh_cmd_match.group(1)
-                host = ssh_cmd_match.group(2)
-                port = int(ssh_cmd_match.group(3))
-                # key_path might be None if not specified in the command
-                key_path = ssh_cmd_match.group(4) if ssh_cmd_match.group(4) else get_ssh_key_path()
-                
-                # Save the updated SSH info to environment
-                save_pod_id_env(pod_id, username, host, port)
-                
-                print(f"✅ Updated SSH information: {username}@{host}:{port} with key {key_path}")
-                
-                # Test the SSH connection immediately to verify it works
-                ssh_info = {
-                    "ssh_user": username,
-                    "ssh_host": host,
-                    "ssh_port": port,
-                    "ssh_key_path": key_path
-                }
-                
-                # Try a quick SSH connection test
-                print("Testing SSH connection with the new information...")
-                try:
-                    test_cmd = f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i {key_path} {username}@{host} -p {port} "echo CONNECTION_TEST_OK"'
-                    print(f"Test command: {test_cmd}")
-                    test_result = subprocess.run(test_cmd, shell=True, capture_output=True, text=True, timeout=10)
-                    
-                    if "CONNECTION_TEST_OK" in test_result.stdout:
-                        print("✅ SSH connection test successful!")
-                    else:
-                        print(f"⚠️ SSH test returned unexpected output: {test_result.stdout}")
-                except Exception as e:
-                    print(f"⚠️ SSH connection test failed: {e}")
-                    print("The connection information might still be correct but not ready yet")
-                
-                return ssh_info
-            
-            # If we couldn't find the command in the expected format, try the old method with --dry-run
-            print("No SSH command found in output, trying with --dry-run...")
-            # Run runpodctl connect with --dry-run to get the command without executing it
-            result = subprocess.run(
-                ["runpodctl", "connect", pod_id, "--dry-run"], 
-                capture_output=True, 
-                text=True, 
-                check=True
-            )
-            
-            output = result.stdout.strip()
-            print(f"Connect command output: {output}")
-            
-            # Parse the SSH command from the output
-            # Expected format: ssh root@IP_ADDRESS -p PORT -i KEY_PATH
-            # But there might be variations, so we use a more flexible regex
-            ssh_match = re.search(r'ssh\s+([^@\s]+)@([^\s-]+)\s+-p\s+(\d+)(?:\s+-i\s+([^\s]+))?', output)
-            
-            if ssh_match:
-                username = ssh_match.group(1)
-                host = ssh_match.group(2)
-                port = int(ssh_match.group(3))
-                # key_path might be None if not specified in the command
-                key_path = ssh_match.group(4) if ssh_match.group(4) else get_ssh_key_path()
-                
-                # Save the updated SSH info to environment
-                save_pod_id_env(pod_id, username, host, port)
-                
-                print(f"✅ Updated SSH information: {username}@{host}:{port} with key {key_path}")
-                
-                # Test the SSH connection immediately to verify it works
-                ssh_info = {
-                    "ssh_user": username,
-                    "ssh_host": host,
-                    "ssh_port": port,
-                    "ssh_key_path": key_path
-                }
-                
-                # Try a quick SSH connection test
-                print("Testing SSH connection with the new information...")
-                try:
-                    test_cmd = f'ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i {key_path} {username}@{host} -p {port} "echo CONNECTION_TEST_OK"'
-                    print(f"Test command: {test_cmd}")
-                    test_result = subprocess.run(test_cmd, shell=True, capture_output=True, text=True, timeout=10)
-                    
-                    if "CONNECTION_TEST_OK" in test_result.stdout:
-                        print("✅ SSH connection test successful!")
-                    else:
-                        print(f"⚠️ SSH test returned unexpected output: {test_result.stdout}")
-                except Exception as e:
-                    print(f"⚠️ SSH connection test failed: {e}")
-                    print("The connection information might still be correct but not ready yet")
-                
-                return ssh_info
-            else:
-                print("❌ Could not parse SSH command from output, trying alternative pattern")
-                
-                # Try an alternative format that might be used
-                ssh_match = re.search(r'([^@\s]+)@([^\s:]+):(\d+)', output)
-                if ssh_match:
-                    username = ssh_match.group(1)
-                    host = ssh_match.group(2)
-                    port = int(ssh_match.group(3))
-                    key_path = get_ssh_key_path()
-                    
-                    # Save the updated SSH info to environment
-                    save_pod_id_env(pod_id, username, host, port)
-                    
-                    print(f"✅ Updated SSH information (alternative format): {username}@{host}:{port} with key {key_path}")
-                    
-                    return {
-                        "ssh_user": username,
-                        "ssh_host": host,
-                        "ssh_port": port,
-                        "ssh_key_path": key_path
-                    }
-                
-                print("❌ Could not parse SSH command from output using any known pattern")
-                return None
-                
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Command failed: {e}")
-            print(f"Error output: {e.stderr}")
-            return None
-        except Exception as e:
-            print(f"❌ Unexpected error: {e}")
             return None
 
 def load_pod_id():
@@ -2326,42 +2226,10 @@ def main():
         manager = RunPodManager(API_KEY)
         ssh_info = manager.connect()
         
-        if ssh_info:
-            # Build the SSH command
-            ssh_user = ssh_info.get("ssh_user")
-            ssh_host = ssh_info.get("ssh_host")
-            ssh_port = ssh_info.get("ssh_port")
-            ssh_key_path = ssh_info.get("ssh_key_path", get_ssh_key_path())
-            
-            # Display the SSH command
-            if ssh_user and ssh_host and ssh_port:
-                ssh_cmd = f"ssh {ssh_user}@{ssh_host} -p {ssh_port} -i {ssh_key_path}"
-                print(f"\n🔑 Command to connect to the pod:")
-                print(f"    {ssh_cmd}")
-                    
-                # If direct connection, show it supports SCP
-                if ssh_host != "ssh.runpod.io":
-                    print("\n✅ This connection supports SCP/SFTP and can be used for backup/restore commands")
-                    
-                    # Build HTTP URL if possible
-                    pod_id = load_pod_id()
-                    if pod_id:
-                        http_url = f"https://{pod_id}-3000.proxy.runpod.net/"
-                        print(f"\n🌐 Web Interface:")
-                        print(f"    {http_url}")
-                else:
-                    print("\n⚠️ This tunnel connection doesn't support SCP/SFTP")
-                    print("Backup/restore commands may not work properly")
-                    print("Try manually running 'runpodctl get pod -a' and look for a direct connection")
-            else:
-                print("❌ Unable to retrieve SSH connection information.")
-                print("Verify that your pod is running with 'python runpod_manager.py list'")
-                print("If your pod is running, try manually updating the .env file")
-                print("with the appropriate values for SSH_USERNAME, SSH_HOST, and SSH_PORT.")
-        else:
-            print("❌ Failed to retrieve SSH connection information.")
-            print("Make sure your pod is running and try again.")
-    
+        # Note: les messages d'erreur sont maintenant dans la fonction connect
+        # Nous n'avons pas besoin de vérifier ssh_info ici car la fonction connect
+        # gère déjà l'affichage des messages d'erreur appropriés
+
     elif args.command == 'clean':
         clean_pod_info()
     
